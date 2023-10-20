@@ -59,7 +59,7 @@ io_init(void)
 	// print an error message, but our stderr could be screwed anyway.
 	tuklib_open_stdxxx(E_ERROR);
 
-#ifndef TUKLIB_DOSLIKE
+#if !defined(TUKLIB_DOSLIKE) && !defined(__wasm32)
 	// If fchown() fails setting the owner, we warn about it only if
 	// we are root.
 	warn_fchown = geteuid() == 0;
@@ -165,6 +165,7 @@ io_copy_attrs(const file_pair *pair)
 	// Try changing the owner of the file. If we aren't root or the owner
 	// isn't already us, fchown() probably doesn't succeed. We warn
 	// about failing fchown() only if we are root.
+#ifndef __wasm32
 	if (fchown(pair->dest_fd, pair->src_st.st_uid, -1) && warn_fchown)
 		message_warning(_("%s: Cannot set the file owner: %s"),
 				pair->dest_name, strerror(errno));
@@ -189,7 +190,9 @@ io_copy_attrs(const file_pair *pair)
 		// Drop the setuid, setgid, and sticky bits.
 		mode = pair->src_st.st_mode & 0777;
 	}
-
+#else
+	mode_t mode = pair->src_st.st_mode & 0777;
+#endif
 	if (fchmod(pair->dest_fd, mode))
 		message_warning(_("%s: Cannot set the file permissions: %s"),
 				pair->dest_name, strerror(errno));
